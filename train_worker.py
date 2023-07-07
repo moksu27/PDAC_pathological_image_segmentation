@@ -147,72 +147,67 @@ def validation(model, criterion, val_loader, device):
 
 
 def train(
-    model,
-    criterion,
-    optimizer,
-    train_loader,
-    val_loader,
-    scheduler,
-    device,
-    CFG,
-    train_sampler,
+    model, criterion, optimizer, train_loader, val_loader, scheduler, device, CFG
 ):
     loss_meter = AverageMeter()
     score_meter = AverageMeter()
+
     early_stopping = EarlyStop(patience=20, delta=0)
     best_score = 0
     best_model = None
     result_arr = np.empty((0, 4), float)
     columns = []
+
     model.train()
-
     for epoch in range(CFG["EPOCHS"]):
-        train_sampler.set_epoch(epoch)
-        try:
-            for img, label in tqdm(train_loader):
-                optimizer.zero_grad()
-                out = model(img.to(device))
-                out = torch.squeeze(out)
-                pred = torch.ge(out.sigmoid(), 0.5).float()
-                label = torch.squeeze(label).to(device)
-                score = dice_score(pred, label)
-                loss = criterion(out, label.type(torch.FloatTensor).to(device))
+        train_loader.sampler.set_epoch(epoch)
+        for img, label in tqdm(train_loader):
+            optimizer.zero_grad()
+            out = model(img.to(device))
+            out = torch.squeeze(out)
+            pred = torch.ge(out.sigmoid(), 0.5).float()
+            label = torch.squeeze(label).to(device)
+            score = dice_score(pred, label)
+            loss = criterion(out, label.type(torch.FloatTensor).to(device))
+            loss.backward()
+            optimizer.step()
 
-                loss_meter.update(loss.item())
-                score_meter.update(score.item())
+            loss_meter.update(loss.item())
+            score_meter.update(score.item())
 
-                loss.backward()
-                optimizer.step()
+        train_loss_mean = loss_meter.avg
+        train_score_mean = score_meter.avg
+        loss_meter.reset()
+        score_meter.reset()
+        val_loss, val_score = validation(model, criterion, val_loader, device)
 
-            train_loss_mean = loss_meter.avg
-            train_score_mean = score_meter.avg
-            loss_meter.reset()
-            score_meter.reset()
-            val_loss, val_score = validation(model, criterion, val_loader, device)
+        if scheduler is not None:
+            scheduler.step(val_score)
 
+        result_arr = np.append(
+            result_arr,
+            np.array([[train_loss_mean, train_score_mean, val_loss, val_score]]),
+            axis=0,
+        )
+
+        if best_score < val_score:
+            best_score = val_score
+            best_model = model
+
+        early_stopping(val_score)
+        if early_stopping.early_stop:
+            columns.append(f"epoch:{epoch+1}")
+            print("Early stopping!")
+            break
+
+        columns.append(f"epoch:{epoch+1}")
+
+        if device == 1:
             print(
                 f"epoch{epoch+1}: Train_loss:{train_loss_mean} Train_score:{train_score_mean} Val_loss:{val_loss} Val_score:{val_score}"
             )
-            result_arr = np.append(
-                result_arr,
-                np.array([[train_loss_mean, train_score_mean, val_loss, val_score]]),
-                axis=0,
-            )
-            if scheduler is not None:
-                scheduler.step(val_score)
 
-            if best_score < val_score:
-                best_score = val_score
-                best_model = model
-
-            early_stopping(val_score)
-            if early_stopping.early_stop:
-                columns.append(f"epoch:{epoch+1}")
-                print("Early stopping!")
-                break
-        except KeyboardInterrupt:
-            best_model = model
-        columns.append(f"epoch:{epoch+1}")
+        torch.distributed.barrier()
     return best_model, result_arr, columns
 
 
@@ -224,7 +219,6 @@ def main_worker(gpu, world_size, train_set, val_set, CFG):
         rank=gpu,
     )
     torch.cuda.set_device(gpu)
-    torch.distributed.barrier()
     model = ResUNet(num_classes=1)
     model = model.cuda(gpu)
     model = DistributedDataParallel(
@@ -240,6 +234,7 @@ def main_worker(gpu, world_size, train_set, val_set, CFG):
 
     batch_size = int(CFG["BATCH_SIZE"] / world_size)
     num_worker = int(CFG["num_worker"] / world_size)
+
     train_loader = DataLoader(
         dataset=train_set,
         batch_size=batch_size,
@@ -269,16 +264,8 @@ def main_worker(gpu, world_size, train_set, val_set, CFG):
         verbose=True,
     )
     criterion = DiceLoss().to(gpu)
-    infer_model, result, columns = train(
-        model,
-        criterion,
-        optimizer,
-        train_loader,
-        val_loader,
-        scheduler,
-        gpu,
-        CFG,
-        train_sampler,
-    )
 
+    infer_model, result, columns = train(
+        model, criterion, optimizer, train_loader, val_loader, scheduler, gpu, CFG
+    )
     return infer_model, result, columns
