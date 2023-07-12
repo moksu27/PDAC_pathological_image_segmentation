@@ -1,6 +1,6 @@
 import torch
 import torch.nn as nn
-import numpy as np
+import os
 from tqdm.auto import tqdm
 from torch.optim.adam import Adam
 from torch.utils.data.dataloader import DataLoader
@@ -10,6 +10,7 @@ from torch.utils.data.distributed import DistributedSampler
 import torchvision.models as models
 import torch.nn.functional as F
 from torchvision.models import ResNet18_Weights
+import mlflow
 
 
 # Modeling
@@ -102,27 +103,6 @@ class AverageMeter:
         self.avg = self.sum / self.count
 
 
-class EarlyStop:
-    def __init__(self, patience=5, delta=0):
-        self.patience = patience
-        self.delta = delta
-        self.best_score = None
-        self.counter = 0
-        self.early_stop = False
-        self.val_loss_min = np.Inf
-
-    def __call__(self, val_score):
-        if self.best_score is None:
-            self.best_score = val_score
-        elif val_score < self.best_score + self.delta:
-            self.counter += 1
-            if self.counter >= self.patience:
-                self.early_stop = True
-        else:
-            self.best_score = val_score
-            self.counter = 0
-
-
 def validation(model, criterion, val_loader, device):
     loss_meter2 = AverageMeter()
     score_meter2 = AverageMeter()
@@ -147,16 +127,20 @@ def validation(model, criterion, val_loader, device):
 
 
 def train(
-    model, criterion, optimizer, train_loader, val_loader, scheduler, device, CFG
+    model,
+    criterion,
+    optimizer,
+    train_loader,
+    val_loader,
+    scheduler,
+    device,
+    CFG,
+    pth_path,
+    pth_name,
 ):
     loss_meter = AverageMeter()
     score_meter = AverageMeter()
-
-    early_stopping = EarlyStop(patience=20, delta=0)
     best_score = 0
-    best_model = None
-    result_arr = np.empty((0, 4), float)
-    columns = []
 
     model.train()
     for epoch in range(CFG["EPOCHS"]):
@@ -184,34 +168,29 @@ def train(
         if scheduler is not None:
             scheduler.step(val_score)
 
-        result_arr = np.append(
-            result_arr,
-            np.array([[train_loss_mean, train_score_mean, val_loss, val_score]]),
-            axis=0,
-        )
-
-        if best_score < val_score:
-            best_score = val_score
-            best_model = model
-
-        early_stopping(val_score)
-        if early_stopping.early_stop:
-            columns.append(f"epoch:{epoch+1}")
-            print("Early stopping!")
-            break
-
-        columns.append(f"epoch:{epoch+1}")
-
-        if device == 1:
+        if device == 0:
             print(
                 f"epoch{epoch+1}: Train_loss:{train_loss_mean} Train_score:{train_score_mean} Val_loss:{val_loss} Val_score:{val_score}"
             )
+            mlflow.log_metric("Train_Loss", train_loss_mean)
+            mlflow.log_metric("Train_Score", train_score_mean)
+            mlflow.log_metric("Validation_Loss", val_loss)
+            mlflow.log_metric("Validation_Score", val_score)
+
+            if best_score < val_score:
+                best_score = val_score
+                best_model = model
 
         torch.distributed.barrier()
-    return best_model, result_arr, columns
+
+    if device == 0:
+        os.makedirs(f"{pth_path}", exist_ok=True)
+        torch.save(best_model.module.state_dict(), pth_name)
+
+    return
 
 
-def main_worker(gpu, world_size, train_set, val_set, CFG):
+def main_worker(gpu, world_size, train_set, val_set, CFG, pth_path, pth_name):
     dist.init_process_group(
         backend="nccl",
         init_method="tcp://0.0.0.0:12345",
@@ -232,8 +211,13 @@ def main_worker(gpu, world_size, train_set, val_set, CFG):
         dataset=val_set, num_replicas=world_size, shuffle=False
     )
 
-    batch_size = int(CFG["BATCH_SIZE"] / world_size)
-    num_worker = int(CFG["num_worker"] / world_size)
+    if gpu == 0 or 2:
+        batch_size = int(CFG["BATCH_SIZE"] / world_size + 1)
+        num_worker = int(CFG["num_worker"] / world_size + 1)
+
+    elif gpu == 1:
+        batch_size = int(CFG["BATCH_SIZE"] / world_size + 1) * 2
+        num_worker = int(CFG["num_worker"] / world_size + 1) * 2
 
     train_loader = DataLoader(
         dataset=train_set,
@@ -260,12 +244,22 @@ def main_worker(gpu, world_size, train_set, val_set, CFG):
         factor=0.5,
         patience=2,
         threshold_mode="abs",
-        min_lr=1e-8,
+        min_lr=1e-10,
         verbose=True,
     )
     criterion = DiceLoss().to(gpu)
 
-    infer_model, result, columns = train(
-        model, criterion, optimizer, train_loader, val_loader, scheduler, gpu, CFG
+    train(
+        model,
+        criterion,
+        optimizer,
+        train_loader,
+        val_loader,
+        scheduler,
+        gpu,
+        CFG,
+        pth_path,
+        pth_name,
     )
-    return infer_model, result, columns
+
+    return

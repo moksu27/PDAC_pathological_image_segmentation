@@ -1,0 +1,15 @@
+artifact_uri: file:///workspace/mlruns/0/58705990dbdd40478dcb1a3d96a67ba6/artifacts
+end_time: 1689063083264
+entry_point_name: ''
+experiment_id: '0'
+lifecycle_stage: active
+run_id: 58705990dbdd40478dcb1a3d96a67ba6
+run_name: orderly-gnat-236
+run_uuid: 58705990dbdd40478dcb1a3d96a67ba6
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1689063065052
+status: 3
+tags: []
+user_id: root
