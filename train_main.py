@@ -14,16 +14,15 @@ from albumentations.pytorch.transforms import ToTensorV2
 from train_worker import main_worker
 from dataset import CustomDataset
 import mlflow
-import pdb
 
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
 
 CFG = {
     "IMG_SIZE": 1024,
-    "EPOCHS": 40,
+    "EPOCHS": 30,
     "LEARNING_RATE": 1e-5,
-    "BATCH_SIZE": 40,
+    "BATCH_SIZE": 35,
     "SEED": 41,
     "num_worker": 12,
     "MEAN": [0.485, 0.456, 0.406],
@@ -37,13 +36,9 @@ current_datetime = datetime.datetime.now(kst)
 day = current_datetime.strftime("%Y_%m_%d")
 hour = current_datetime.strftime("%I:%M_%p")
 
-output_path = f"/workspace/git_ignore/output/{day}"
 pth_path = f"/workspace/git_ignore/pthfile/{day}"
-trainframe_path = f"{output_path}/trainframe"
-train_data_path = f"/workspace/git_ignore/PDA_mask_img(1024)/train/{CFG['train_magnification']}/**/*.png"
-val_data_path = f"/workspace/git_ignore/PDA_mask_img(1024)/validation/{CFG['train_magnification']}/**/*.png"
-
-trainframe_name = f"{trainframe_path}/train:{CFG['train_magnification']}_epoch:{CFG['EPOCHS']}_{hour}.xlsx"
+train_data_path = f"/workspace/git_ignore/PDA_labeled_tile(1024)/train/{CFG['train_magnification']}/**/*.png"
+val_data_path = f"/workspace/git_ignore/PDA_labeled_tile(1024)/validation/{CFG['train_magnification']}/**/*.png"
 pth_name = f"{pth_path}/M:{CFG['train_magnification']}_E:{CFG['EPOCHS']}_{hour}.pth"
 
 
@@ -103,18 +98,20 @@ val_set = CustomDataset(
 
 # 분산 학습 RUN
 world_size = torch.cuda.device_count()
+magnification = CFG["train_magnification"]
 if __name__ == "__main__":
     mlflow.set_tracking_uri("http://127.0.0.1:5000")  # MLflow 서버 주소 설정
-    with mlflow.start_run(run_name=CFG["train_magnification"]):
+    with mlflow.start_run(run_name=f"{magnification}_{day}") as run:
+        run_id = run.info.run_id
         mlflow.log_param("IMG_SIZE", CFG["IMG_SIZE"])
         mlflow.log_param("EPOCHS", CFG["EPOCHS"])
         mlflow.log_param("BATCH_SIZE", CFG["BATCH_SIZE"])
         mlflow.log_param("Magnification", CFG["train_magnification"])
+        mlflow.end_run()
 
-        mp.spawn(
-            main_worker,
-            nprocs=world_size,
-            args=(world_size, train_set, val_set, CFG, pth_path, pth_name),
-            join=True,
-        )
-    mlflow.end_run()
+    mp.spawn(
+        main_worker,
+        nprocs=world_size,
+        args=(world_size, train_set, val_set, CFG, pth_path, pth_name, run_id),
+        join=True,
+    )

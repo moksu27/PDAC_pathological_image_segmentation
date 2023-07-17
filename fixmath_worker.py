@@ -11,6 +11,8 @@ import torchvision.models as models
 import torch.nn.functional as F
 from torchvision.models import ResNet18_Weights
 import mlflow
+import numpy as np
+import torch.nn.functional as F
 
 
 # Modeling
@@ -128,6 +130,8 @@ def validation(model, criterion, val_loader, device):
 
 def train(
     model,
+    unlabeled_loader,
+    labeled_loader,
     criterion,
     optimizer,
     train_loader,
@@ -146,19 +150,46 @@ def train(
     model.train()
     for epoch in range(CFG["EPOCHS"]):
         train_loader.sampler.set_epoch(epoch)
-        for img, label in tqdm(train_loader):
+        labeled_iter = iter(labeled_loader)
+        for unlabeled_img, _ in tqdm(unlabeled_loader):
+            try:
+                labeled_img, label = next(labeled_iter)
+            except StopIteration:
+                labeled_iter = iter(labeled_loader)
+                labeled_img, label = next(labeled_iter)
+
             optimizer.zero_grad()
-            out = model(img.to(device))
-            out = torch.squeeze(out)
-            pred = torch.ge(out.sigmoid(), 0.5).float()
-            label = torch.squeeze(label).to(device)
-            score = dice_score(pred, label)
-            loss = criterion(out, label.type(torch.FloatTensor).to(device))
-            loss.backward()
+
+            # 레이블이 있는 데이터에 대한 순전파
+            labeled_out = model(labeled_img.to(device))
+            labeled_out = torch.squeeze(labeled_out)
+            labeled_pred = torch.ge(labeled_out.sigmoid(), 0.5).float()
+            labeled_label = torch.squeeze(label).to(device)
+            labeled_loss = criterion(
+                labeled_out, labeled_label.type(torch.FloatTensor).to(device)
+            )
+            labeled_loss.backward()
+
+            # 레이블이 없는 데이터에 대한 순전파
+            unlabeled_out = model(unlabeled_img.to(device))
+            unlabeled_out = torch.squeeze(unlabeled_out)
+            unlabeled_pred = torch.ge(unlabeled_out.sigmoid(), 0.5).float()
+            pseudo_label = (unlabeled_pred > CFG["pseudo_label_threshold"]).float()
+
+            # 증강된 샘플 생성
+            aug_unlabeled_img, _ = next(iter(unlabeled_loader))
+            aug_unlabeled_out = model(aug_unlabeled_img.to(device))
+            aug_unlabeled_out = torch.squeeze(aug_unlabeled_out)
+            aug_unlabeled_pred = torch.ge(aug_unlabeled_out.sigmoid(), 0.5).float()
+
+            # 일관성 손실 계산
+            consistency_loss = F.mse_loss(aug_unlabeled_pred, pseudo_label)
+            consistency_loss.backward()
+
             optimizer.step()
 
-            loss_meter.update(loss.item())
-            score_meter.update(score.item())
+            loss_meter.update((labeled_loss.item() + consistency_loss.item()) / 2)
+            score_meter.update(dice_score(labeled_pred, labeled_label).item())
 
         train_loss_mean = loss_meter.avg
         train_score_mean = score_meter.avg
