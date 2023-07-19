@@ -1,5 +1,9 @@
 git_ignore/
 UniMatch-main/
+<<<<<<< HEAD
 FixMatch/pthfile/
 ResUnet/output/
 ResUnet/pthfile/
+=======
+mlruns/
+>>>>>>> 6d0f27c90aa766647099974103e140d927bf7e54
