@@ -173,9 +173,7 @@ def train(
             print(
                 f"epoch{epoch+1}: Train_loss:{train_loss_mean} Train_score:{train_score_mean} Val_loss:{val_loss} Val_score:{val_score}"
             )
-            with mlflow.start_run(
-                run_name=CFG["train_magnification"], run_id=run_id
-            ) as run:
+            with mlflow.start_run(run_id=run_id, experiment_id=0):
                 mlflow.log_metric("Train_Loss", train_loss_mean, step=epoch + 1)
                 mlflow.log_metric("Train_Score", train_score_mean, step=epoch + 1)
                 mlflow.log_metric("Validation_Loss", val_loss, step=epoch + 1)

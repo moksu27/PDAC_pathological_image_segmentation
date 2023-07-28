@@ -30,18 +30,18 @@ CFG = {
     "MEAN": [0.485, 0.456, 0.406],
     "STD": [0.229, 0.224, 0.225],
     "test_magnification": "20X",
-    "pth": "/workspace/git_ignore/pthfile/2023_07_14/M:10X_E:30_01:44_PM.pth",
+    "pth": "/workspace/ResUnet/pthfile/2023_07_27/M:20X_E:30_03:42_PM.pth",
 }
 
 kst = pytz.timezone("Asia/Seoul")
 current_datetime = datetime.datetime.now(kst)
 day = current_datetime.strftime("%Y_%m_%d")
 hour = current_datetime.strftime("%I:%M_%p")
-output_path = f"/workspace/git_ignore/output/{day}"
+output_path = f"/workspace/ResUnet/output/{day}"
 figure_path = f"{output_path}/figure"
 pth_name = CFG["pth"].split("/")[5][:-13]
 figure_name = f"{pth_name}_test"
-run_id = "698b79d89d2746b4a1a1b4f387a2d2e6"
+run_id = "0af0a9b34ede464ea1aae4ae4a43c112"
 
 
 # Seed 고정
@@ -57,7 +57,9 @@ def seed_everything(seed):
 
 seed_everything(CFG["SEED"])
 
-test_data_path = f"/workspace/git_ignore/PDA_labeled_tile(1024)/test/{CFG['test_magnification']}/**/*.png"
+test_data_path = (
+    f"/workspace/git_ignore/PDA_labeled_tile/test/{CFG['test_magnification']}/**/*.png"
+)
 test_path_list = sorted(glob.glob(test_data_path))
 test_mask_path = test_path_list[0::2]
 test_img_path = test_path_list[1::2]
@@ -194,7 +196,7 @@ def Test(model, criterion, test_loader, device, run_id):
         test_loss_mean = loss_meter.avg
         test_score_mean = score_meter.avg
         mlflow.set_tracking_uri("http://127.0.0.1:5000")  # MLflow 서버 주소 설정
-        with mlflow.start_run(run_id=run_id):
+        with mlflow.start_run(run_id=run_id, experiment_id=0):
             mlflow.log_metric("Test Loss", test_loss_mean, step=1)
             mlflow.log_metric("Test Score", test_score_mean, step=1)
             mlflow.end_run()

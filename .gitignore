@@ -1,3 +1,13 @@
-git_ignore/
+FixMatch-pytorch-master/
 UniMatch-main/
 mlruns/
+git_ignore/
+pyhist.ipynb
+.vscode
+FixMatch_2/
+ResUnet/pthfile/
+ResUnet/output/
+FixMatch_1/pthfile/
+FixMatch_1/output/
+FixMatch_2/pthfile/
+FixMatch_2/output/
