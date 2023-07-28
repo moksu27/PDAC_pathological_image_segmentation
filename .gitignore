@@ -1,5 +1,10 @@
 FixMatch-pytorch-master/
 UniMatch-main/
+<<<<<<< HEAD
+FixMatch/pthfile/
+ResUnet/output/
+ResUnet/pthfile/
+=======
 mlruns/
 git_ignore/
 pyhist.ipynb
@@ -11,3 +16,4 @@ FixMatch_1/pthfile/
 FixMatch_1/output/
 FixMatch_2/pthfile/
 FixMatch_2/output/
+>>>>>>> 6d0f27c90aa766647099974103e140d927bf7e54

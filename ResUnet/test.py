@@ -30,7 +30,7 @@ CFG = {
     "MEAN": [0.485, 0.456, 0.406],
     "STD": [0.229, 0.224, 0.225],
     "test_magnification": "20X",
-    "pth": "/workspace/ResUnet/pthfile/2023_07_27/M:20X_E:30_03:42_PM.pth",
+    "pth": "/workspace/ResUnet/pthfile/2023_07_14/M:10X_E:30_01:44_PM.pth",
 }
 
 kst = pytz.timezone("Asia/Seoul")
