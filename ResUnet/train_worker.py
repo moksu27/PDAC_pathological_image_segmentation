@@ -173,11 +173,11 @@ def train(
             print(
                 f"epoch{epoch+1}: Train_loss:{train_loss_mean} Train_score:{train_score_mean} Val_loss:{val_loss} Val_score:{val_score}"
             )
-            with mlflow.start_run(run_id=run_id, experiment_id=0):
-                mlflow.log_metric("Train_Loss", train_loss_mean, step=epoch + 1)
-                mlflow.log_metric("Train_Score", train_score_mean, step=epoch + 1)
-                mlflow.log_metric("Validation_Loss", val_loss, step=epoch + 1)
-                mlflow.log_metric("Validation_Score", val_score, step=epoch + 1)
+            # with mlflow.start_run(run_id=run_id, experiment_id=0):
+            #     mlflow.log_metric("Train_Loss", train_loss_mean, step=epoch + 1)
+            #     mlflow.log_metric("Train_Score", train_score_mean, step=epoch + 1)
+            #     mlflow.log_metric("Validation_Loss", val_loss, step=epoch + 1)
+            #     mlflow.log_metric("Validation_Score", val_score, step=epoch + 1)
 
             if best_score < val_score:
                 best_score = val_score
@@ -207,20 +207,20 @@ def main_worker(gpu, world_size, train_set, val_set, CFG, pth_path, pth_name, ru
         model, device_ids=[gpu], find_unused_parameters=True
     )
 
+    if gpu == 0 or 2:
+        batch_size = int(CFG["BATCH_SIZE"] / (world_size + 1))
+        num_worker = int(CFG["num_worker"] / (world_size + 1))
+
+    elif gpu == 1:
+        batch_size = int(CFG["BATCH_SIZE"] / (world_size + 1)) * 2
+        num_worker = int(CFG["num_worker"] / (world_size + 1)) * 2
+
     train_sampler = DistributedSampler(
         dataset=train_set, num_replicas=world_size, shuffle=True
     )
     val_sampler = DistributedSampler(
         dataset=val_set, num_replicas=world_size, shuffle=False
     )
-
-    if gpu == 0 or 2:
-        batch_size = int(CFG["BATCH_SIZE"] / world_size + 1)
-        num_worker = int(CFG["num_worker"] / world_size + 1)
-
-    elif gpu == 1:
-        batch_size = int(CFG["BATCH_SIZE"] / world_size + 1) * 2
-        num_worker = int(CFG["num_worker"] / world_size + 1) * 2
 
     train_loader = DataLoader(
         dataset=train_set,

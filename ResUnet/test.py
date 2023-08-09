@@ -30,7 +30,7 @@ CFG = {
     "MEAN": [0.485, 0.456, 0.406],
     "STD": [0.229, 0.224, 0.225],
     "test_magnification": "20X",
-    "pth": "/workspace/ResUnet/pthfile/2023_07_14/M:10X_E:30_01:44_PM.pth",
+    "pth": "/workspace/ResUnet/pthfile/2023_07_27/M:20X_E:30_03:42_PM.pth",
 }
 
 kst = pytz.timezone("Asia/Seoul")
@@ -221,40 +221,40 @@ def denormalize(tensor, mean=CFG["MEAN"], std=CFG["STD"]):
 
 mpl.rcParams["image.cmap"] = "inferno"
 
-os.makedirs(figure_path, exist_ok=True)
+# os.makedirs(figure_path, exist_ok=True)
 
-with mlflow.start_run(run_id=run_id):
-    for i in tqdm(range(len(test_set))):
-        data, label = test_set[i]
-        label = torch.squeeze(label)
+# with mlflow.start_run(run_id=run_id):
+for i in tqdm(range(len(test_set))):
+    data, label = test_set[i]
+    label = torch.squeeze(label)
 
-        with torch.no_grad():
-            out = model(torch.unsqueeze(data, dim=0).to(device))
-        out = torch.squeeze(out).sigmoid().to("cpu")
-        pred = torch.ge(out, 0.5).float().to("cpu")
+    with torch.no_grad():
+        out = model(torch.unsqueeze(data, dim=0).to(device))
+    out = torch.squeeze(out).sigmoid().to("cpu")
+    pred = torch.ge(out, 0.5).float().to("cpu")
 
-        # 오리지널 이미지
-        plt.subplot(1, 3, 1)
-        plt.title("original")
-        plt.imshow(ToPILImage()(denormalize(data)))
-        plt.xticks([])
-        plt.yticks([])
+    # 오리지널 이미지
+    plt.subplot(1, 3, 1)
+    plt.title("original")
+    plt.imshow(ToPILImage()(denormalize(data)))
+    plt.xticks([])
+    plt.yticks([])
 
-        # 마스크 이미지
-        plt.subplot(1, 3, 2)
-        plt.title("mask")
-        plt.imshow(label)
-        plt.xticks([])
-        plt.yticks([])
+    # 마스크 이미지
+    plt.subplot(1, 3, 2)
+    plt.title("mask")
+    plt.imshow(label)
+    plt.xticks([])
+    plt.yticks([])
 
-        # 마스크 예측 이미지
-        plt.subplot(1, 3, 3)
-        plt.title("predicted")
-        plt.tight_layout()
-        plt.imshow(pred)
-        plt.xticks([])
-        plt.yticks([])
-        plt.savefig(f"{figure_path}/test_figure_{i+1}.png", bbox_inches="tight")
+    # 마스크 예측 이미지
+    plt.subplot(1, 3, 3)
+    plt.title("predicted")
+    plt.tight_layout()
+    plt.imshow(pred)
+    plt.xticks([])
+    plt.yticks([])
+    # plt.savefig(f"{figure_path}/test_figure_{i+1}.png", bbox_inches="tight")
 
-        mlflow.log_artifact(f"{figure_path}/test_figure_{i+1}.png", "Test_Figure")
-    mlflow.end_run()
+    #     mlflow.log_artifact(f"{figure_path}/test_figure_{i+1}.png", "Test_Figure")
+    # mlflow.end_run()

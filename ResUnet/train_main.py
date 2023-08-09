@@ -100,17 +100,17 @@ val_set = CustomDataset(
 world_size = torch.cuda.device_count()
 magnification = CFG["train_magnification"]
 if __name__ == "__main__":
-    mlflow.set_tracking_uri("http://127.0.0.1:5000")  # MLflow 서버 주소 설정
-    with mlflow.start_run(
-        run_name=f"{magnification}_{day}_newdata", experiment_id=0
-    ) as run:
-        run_id = run.info.run_id
-        mlflow.log_param("IMG_SIZE", CFG["IMG_SIZE"])
-        mlflow.log_param("EPOCHS", CFG["EPOCHS"])
-        mlflow.log_param("BATCH_SIZE", CFG["BATCH_SIZE"])
-        mlflow.log_param("Magnification", CFG["train_magnification"])
-        mlflow.end_run()
-
+    # mlflow.set_tracking_uri("http://127.0.0.1:5000")  # MLflow 서버 주소 설정
+    # with mlflow.start_run(
+    #     run_name=f"{magnification}_{day}_newdata", experiment_id=0
+    # ) as run:
+    #     run_id = run.info.run_id
+    #     mlflow.log_param("IMG_SIZE", CFG["IMG_SIZE"])
+    #     mlflow.log_param("EPOCHS", CFG["EPOCHS"])
+    #     mlflow.log_param("BATCH_SIZE", CFG["BATCH_SIZE"])
+    #     mlflow.log_param("Magnification", CFG["train_magnification"])
+    #     mlflow.end_run()
+    run_id = None
     mp.spawn(
         main_worker,
         nprocs=world_size,
