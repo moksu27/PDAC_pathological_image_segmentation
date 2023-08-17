@@ -1,7 +1,6 @@
 import glob
 import torch
 import numpy as np
-from tqdm.auto import tqdm
 import torch.multiprocessing as mp
 import random
 import os
@@ -11,18 +10,19 @@ import datetime
 import pytz
 import albumentations as A
 from albumentations.pytorch.transforms import ToTensorV2
-from train_worker import main_worker
+from Unet_smp.train_worker import main_worker
 from dataset import CustomDataset
-import mlflow
+from torch.utils.tensorboard import SummaryWriter
 
-
+log_dir = "C:/Users/kim/Desktop/bsm/pathology_image_project/ResUnet/log_dir"
+writer = SummaryWriter(log_dir)
 device = "cuda" if torch.cuda.is_available() else "cpu"
 
 CFG = {
     "IMG_SIZE": 1024,
     "EPOCHS": 30,
     "LEARNING_RATE": 1e-5,
-    "BATCH_SIZE": 40,
+    "BATCH_SIZE": 30,
     "SEED": 41,
     "num_worker": 12,
     "MEAN": [0.485, 0.456, 0.406],
@@ -36,9 +36,9 @@ current_datetime = datetime.datetime.now(kst)
 day = current_datetime.strftime("%Y_%m_%d")
 hour = current_datetime.strftime("%I:%M_%p")
 
-pth_path = f"/workspace/ResUnet/pthfile/{day}"
-train_data_path = f"/workspace/git_ignore/PDA_labeled_tile/train/{CFG['train_magnification']}/**/*.png"
-val_data_path = f"/workspace/git_ignore/PDA_labeled_tile/validation/{CFG['train_magnification']}/**/*.png"
+pth_path = f"C:/Users/kim/Desktop/bsm/pathology_image_project/ResUnet/pthfile/{day}"
+train_data_path = f"C:/Users/kim/Desktop/bsm/pathology_image_project/git_ignore/PDA_labeled_tile/train/{CFG['train_magnification']}/**/*.png"
+val_data_path = f"C:/Users/kim/Desktop/bsm/pathology_image_project/git_ignore/PDA_labeled_tile/validation/{CFG['train_magnification']}/**/*.png"
 pth_name = f"{pth_path}/M:{CFG['train_magnification']}_E:{CFG['EPOCHS']}_{hour}.pth"
 
 
@@ -100,20 +100,15 @@ val_set = CustomDataset(
 world_size = torch.cuda.device_count()
 magnification = CFG["train_magnification"]
 if __name__ == "__main__":
-    # mlflow.set_tracking_uri("http://127.0.0.1:5000")  # MLflow 서버 주소 설정
-    # with mlflow.start_run(
-    #     run_name=f"{magnification}_{day}_newdata", experiment_id=0
-    # ) as run:
-    #     run_id = run.info.run_id
-    #     mlflow.log_param("IMG_SIZE", CFG["IMG_SIZE"])
-    #     mlflow.log_param("EPOCHS", CFG["EPOCHS"])
-    #     mlflow.log_param("BATCH_SIZE", CFG["BATCH_SIZE"])
-    #     mlflow.log_param("Magnification", CFG["train_magnification"])
-    #     mlflow.end_run()
-    run_id = None
+    writer.add_scalar("IMG_SIZE", CFG["IMG_SIZE"])
+    writer.add_scalar("EPOCHS", CFG["EPOCHS"])
+    writer.add_scalar("BATCH_SIZE", CFG["BATCH_SIZE"])
+    writer.add_scalar("Magnification", CFG["train_magnification"])
+
     mp.spawn(
         main_worker,
         nprocs=world_size,
-        args=(world_size, train_set, val_set, CFG, pth_path, pth_name, run_id),
+        args=(world_size, train_set, val_set, CFG, pth_path, pth_name, log_dir),
         join=True,
     )
+    writer.close()

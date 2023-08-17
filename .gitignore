@@ -8,3 +8,7 @@ FixMatch_Unet/pretrained_pth
 FixMatch_Unet/pthfile
 ResUnet/pthfile/
 ResUnet/output/
+ResUnet/log_dir/
+Unet_smp/log_dir/
+Unet_smp/pthfile/
+a.ipynb

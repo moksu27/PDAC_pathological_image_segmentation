@@ -10,10 +10,10 @@ from torch.utils.data.distributed import DistributedSampler
 import torchvision.models as models
 import torch.nn.functional as F
 from torchvision.models import ResNet18_Weights
-import mlflow
+from torch.utils.tensorboard import SummaryWriter
 
 
-# Modeling
+#Modeling
 class ResUNet(nn.Module):
     def __init__(self, num_classes):
         super(ResUNet, self).__init__()
@@ -29,7 +29,7 @@ class ResUNet(nn.Module):
         self.conv4 = nn.Conv2d(64, num_classes, kernel_size=1)
 
     def forward(self, x):
-        # Encoder
+        #Encoder
         x1 = self.encoder.conv1(x)
         x1 = self.encoder.bn1(x1)
         x1 = self.encoder.relu(x1)
@@ -40,7 +40,7 @@ class ResUNet(nn.Module):
         x4 = self.encoder.layer3(x3)
         x5 = self.encoder.layer4(x4)
 
-        # Decoder
+        #Decoder
         x = self.upconv1(x5)
         x = torch.cat((x, x4), dim=1)
         x = self.relu(self.conv1(x))
@@ -55,7 +55,7 @@ class ResUNet(nn.Module):
 
         x = self.conv4(x)
 
-        # Resize
+        #Resize
         x = nn.functional.interpolate(
             x, size=(1024, 1024), mode="bilinear", align_corners=False
         )
@@ -68,8 +68,7 @@ class DiceLoss(nn.Module):
         super(DiceLoss, self).__init__()
 
     def forward(self, inputs, targets, smooth=1):
-        inputs = F.sigmoid(inputs)  # sigmoid를 통과한 출력이면 주석처리
-
+        inputs = F.sigmoid(inputs)
         inputs = inputs.view(-1)
         targets = targets.view(-1)
 
@@ -137,7 +136,7 @@ def train(
     CFG,
     pth_path,
     pth_name,
-    run_id,
+    log_dir,
 ):
     loss_meter = AverageMeter()
     score_meter = AverageMeter()
@@ -173,11 +172,11 @@ def train(
             print(
                 f"epoch{epoch+1}: Train_loss:{train_loss_mean} Train_score:{train_score_mean} Val_loss:{val_loss} Val_score:{val_score}"
             )
-            # with mlflow.start_run(run_id=run_id, experiment_id=0):
-            #     mlflow.log_metric("Train_Loss", train_loss_mean, step=epoch + 1)
-            #     mlflow.log_metric("Train_Score", train_score_mean, step=epoch + 1)
-            #     mlflow.log_metric("Validation_Loss", val_loss, step=epoch + 1)
-            #     mlflow.log_metric("Validation_Score", val_score, step=epoch + 1)
+            writer = SummaryWriter(log_dir)
+            writer.add_scalar("Train_Loss", train_loss_mean, global_step=epoch + 1)
+            writer.add_scalar("Train_Score", train_score_mean, global_step=epoch + 1)
+            writer.add_scalar("Validation_Loss", val_loss, global_step=epoch + 1)
+            writer.add_scalar("Validation_Score", val_score, global_step=epoch + 1)
 
             if best_score < val_score:
                 best_score = val_score
@@ -186,14 +185,13 @@ def train(
         torch.distributed.barrier()
 
     if device == 0:
-        mlflow.end_run()
         os.makedirs(f"{pth_path}", exist_ok=True)
         torch.save(best_model.module.state_dict(), pth_name)
 
     return
 
 
-def main_worker(gpu, world_size, train_set, val_set, CFG, pth_path, pth_name, run_id):
+def main_worker(gpu, world_size, train_set, val_set, CFG, pth_path, pth_name, log_dir):
     dist.init_process_group(
         backend="nccl",
         init_method="tcp://0.0.0.0:12345",
@@ -207,13 +205,8 @@ def main_worker(gpu, world_size, train_set, val_set, CFG, pth_path, pth_name, ru
         model, device_ids=[gpu], find_unused_parameters=True
     )
 
-    if gpu == 0 or 2:
-        batch_size = int(CFG["BATCH_SIZE"] / (world_size + 1))
-        num_worker = int(CFG["num_worker"] / (world_size + 1))
-
-    elif gpu == 1:
-        batch_size = int(CFG["BATCH_SIZE"] / (world_size + 1)) * 2
-        num_worker = int(CFG["num_worker"] / (world_size + 1)) * 2
+    batch_size = int(CFG["BATCH_SIZE"] / (world_size))
+    num_worker = int(CFG["num_worker"] / (world_size))
 
     train_sampler = DistributedSampler(
         dataset=train_set, num_replicas=world_size, shuffle=True
@@ -263,7 +256,7 @@ def main_worker(gpu, world_size, train_set, val_set, CFG, pth_path, pth_name, ru
         CFG,
         pth_path,
         pth_name,
-        run_id,
+        log_dir,
     )
 
     return
