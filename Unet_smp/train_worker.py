@@ -1,16 +1,15 @@
 import torch
-import torch.nn as nn
 import os
 from tqdm.auto import tqdm
 from torch.optim.adam import Adam
+import torch.nn.functional as F
 import torch.backends.cudnn as cudnn
 from torch.utils.data.dataloader import DataLoader
-import torch.distributed as dist
-from torch.nn.parallel import DistributedDataParallel
-from torch.utils.data.distributed import DistributedSampler
-import torch.nn.functional as F
+import torch.nn as nn
 import segmentation_models_pytorch as smp
 from torch.utils.tensorboard import SummaryWriter
+
+device = "cuda" if torch.cuda.is_available() else "cpu"
 
 
 class DiceLoss(nn.Module):
@@ -52,18 +51,18 @@ class AverageMeter:
         self.avg = self.sum / self.count
 
 
-def validation(model, criterion, val_loader, gpu):
+def validation(model, criterion, val_loader):
     loss_meter2 = AverageMeter()
     score_meter2 = AverageMeter()
     model.eval()
     with torch.no_grad():
         for img, label in tqdm(val_loader):
-            out = model(img.to(gpu))
+            out = model(img.to(device))
             out = torch.squeeze(out)
             pred = torch.ge(out.sigmoid(), 0.5).float()
-            label = torch.squeeze(label).to(gpu)
+            label = torch.squeeze(label).to(device)
             score = dice_score(pred, label)
-            loss = criterion(out, label.type(torch.FloatTensor).to(gpu))
+            loss = criterion(out, label.type(torch.FloatTensor).to(device))
 
             loss_meter2.update(loss.item())
             score_meter2.update(score.item())
@@ -82,7 +81,6 @@ def train(
     train_loader,
     val_loader,
     scheduler,
-    gpu,
     CFG,
     pth_path,
     log_dir,
@@ -101,15 +99,14 @@ def train(
 
     model.train()
     for epoch in range(epoch):
-        train_loader.sampler.set_epoch(epoch)
         for img, label in tqdm(train_loader):
             optimizer.zero_grad()
-            out = model(img.to(gpu))
+            out = model(img.to(device))
             out = torch.squeeze(out)
             pred = torch.ge(out.sigmoid(), 0.5).float()
-            label = torch.squeeze(label).to(gpu)
+            label = torch.squeeze(label).to(device)
             score = dice_score(pred, label)
-            loss = criterion(out, label.type(torch.FloatTensor).to(gpu))
+            loss = criterion(out, label.type(torch.FloatTensor).to(device))
             loss.backward()
             optimizer.step()
 
@@ -121,54 +118,40 @@ def train(
         loss_meter.reset()
         score_meter.reset()
 
-        torch.distributed.barrier()
-
-        val_loss, val_score = validation(model, criterion, val_loader, gpu)
+        val_loss, val_score = validation(model, criterion, val_loader)
 
         if scheduler is not None:
             scheduler.step(val_score)
 
-        if gpu == 0:
-            print(
-                f"epoch{epoch+1}: Train_loss:{train_loss_mean} Train_score:{train_score_mean} Val_loss:{val_loss} Val_score:{val_score}"
-            )
-            writer = SummaryWriter(log_dir)
+        print(
+            f"epoch{epoch+1}: Train_loss:{train_loss_mean} Train_score:{train_score_mean} Val_loss:{val_loss} Val_score:{val_score}"
+        )
+        writer = SummaryWriter(log_dir)
 
-            writer.add_scalar("Loss/Train_Loss", train_loss_mean, global_step=(epoch + 1))
-            writer.add_scalar("Score/Train_Score", train_score_mean, global_step=(epoch + 1))
-            writer.add_scalar("Loss/Validation_Loss", val_loss, global_step=(epoch + 1))
-            writer.add_scalar("Score/Validation_Score", val_score, global_step=(epoch + 1))
-            writer.flush()
+        writer.add_scalar("Loss/Train_Loss", train_loss_mean, global_step=(epoch + 1))
+        writer.add_scalar("Score/Train_Score", train_score_mean, global_step=(epoch + 1))
+        writer.add_scalar("Loss/Validation_Loss", val_loss, global_step=(epoch + 1))
+        writer.add_scalar("Score/Validation_Score", val_score, global_step=(epoch + 1))
+        writer.flush()
 
 
         is_best = val_score > previous_best
         previous_best = max(val_score, previous_best)
 
-        if gpu == 0:
-                checkpoint = {
-                    "model": model.state_dict(),
-                    "optimizer": optimizer.state_dict(),
-                    "epoch": epoch,
-                    "previous_best": previous_best,
-                }
-                torch.save(checkpoint, pth_path + "_latest.pth")
-                if is_best:
-                    torch.save(checkpoint, pth_path + "_best.pth")
+        checkpoint = {
+            "model": model.state_dict(),
+            "optimizer": optimizer.state_dict(),
+            "epoch": epoch,
+            "previous_best": previous_best,
+        }
+        torch.save(checkpoint, pth_path + "_latest.pth")
+        if is_best:
+            torch.save(checkpoint, pth_path + "_best.pth")
 
-        torch.distributed.barrier()
-
-    if gpu == 0:
-        writer.close()
+    writer.close()
     return
 
-def main_worker(gpu, world_size, train_set, val_set, CFG, pth_path, log_dir):
-
-    dist.init_process_group(
-        backend="nccl",
-        init_method="tcp://0.0.0.0:1234",
-        world_size=world_size,
-        rank=gpu,
-    )
+def main_worker(world_size, train_set, val_set, CFG, pth_path, log_dir):
 
     cudnn.enabled = True
     cudnn.benchmark = True
@@ -180,11 +163,8 @@ def main_worker(gpu, world_size, train_set, val_set, CFG, pth_path, log_dir):
         classes=1
     )
 
-    model = model.to(gpu)
-
-    model = DistributedDataParallel(
-        model, device_ids=[gpu], find_unused_parameters=False,  broadcast_buffers=False
-    )
+    model = model.to(device)
+    model = nn.DataParallel(model)
 
     optimizer = Adam(params=model.parameters(), lr=CFG["LEARNING_RATE"])
 
@@ -198,24 +178,18 @@ def main_worker(gpu, world_size, train_set, val_set, CFG, pth_path, log_dir):
         verbose=True,
     )
 
-    criterion = DiceLoss().to(gpu)
+    criterion = DiceLoss().to(device)
 
     batch_size = int(CFG["BATCH_SIZE"] / (world_size))
     num_worker = int(CFG["num_worker"] / (world_size))
 
-    train_sampler = DistributedSampler(
-        dataset=train_set, num_replicas=world_size, shuffle=True
-    )
-    val_sampler = DistributedSampler(
-        dataset=val_set, num_replicas=world_size, shuffle=False
-    )
+
 
     train_loader = DataLoader(
         dataset=train_set,
         batch_size=batch_size,
         shuffle=False,
         num_workers=num_worker,
-        sampler=train_sampler,
         pin_memory=True,
     )
 
@@ -224,10 +198,8 @@ def main_worker(gpu, world_size, train_set, val_set, CFG, pth_path, log_dir):
         batch_size=batch_size,
         shuffle=False,
         num_workers=num_worker,
-        sampler=val_sampler,
         pin_memory=True,
     )
-
 
 
     train(
@@ -237,7 +209,6 @@ def main_worker(gpu, world_size, train_set, val_set, CFG, pth_path, log_dir):
         train_loader,
         val_loader,
         scheduler,
-        gpu,
         CFG,
         pth_path,
         log_dir,

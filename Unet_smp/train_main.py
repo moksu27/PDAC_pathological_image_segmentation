@@ -2,18 +2,17 @@ import glob
 import torch
 import numpy as np
 import random
-import os
 import albumentations as A
 import datetime
 import pytz
 from albumentations.pytorch.transforms import ToTensorV2
 from dataset import CustomDataset
 from train_worker import main_worker
-import torch.multiprocessing as mp
+import os
 
 CFG = {
     "IMG_SIZE": 1024,
-    "EPOCHS": 30,
+    "EPOCHS": 50,
     "LEARNING_RATE": 1e-6,
     "BATCH_SIZE": 16,
     "SEED": 41,
@@ -43,8 +42,8 @@ day = current_datetime.strftime("%Y_%m_%d")
 hour = current_datetime.strftime("%I:%M_%p")
 
 magnification=CFG["train_magnification"]
-log_dir = f"/workspace/Unet_smp/log_dir/{day}/"
-run_name = f"experiment_{magnification}_1"
+log_dir = f"C:/Users/kim/Desktop/bsm/pathology_image_project/Unet_smp/log_dir/{day}/"
+run_name = f"experiment_{magnification}_resnet18"
 
 log_dir = os.path.join(log_dir,run_name)
 
@@ -53,13 +52,13 @@ os.makedirs(log_dir, exist_ok=True)
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
 
-pth_path = f"/workspace/Unet_smp/pthfile/{day}/"
+pth_path = f"C:/Users/kim/Desktop/bsm/pathology_image_project/Unet_smp/pthfile/{day}/"
 os.makedirs(pth_path, exist_ok=True)
 pth_name = os.path.join(pth_path, run_name)
 
 
-train_data_path = f"/workspace/git_ignore/PDA_labeled_tile/train/{CFG['train_magnification']}/**/*.png"
-val_data_path = f"/workspace/git_ignore/PDA_labeled_tile/validation/{CFG['train_magnification']}/**/*.png"
+train_data_path = f"C:/Users/kim/Desktop/bsm/pathology_image_project/git_ignore/PDA_labeled_tile/train/{CFG['train_magnification']}/**/*.png"
+val_data_path = f"C:/Users/kim/Desktop/bsm/pathology_image_project/git_ignore/PDA_labeled_tile/validation/{CFG['train_magnification']}/**/*.png"
 
 # 데이터 불러오기
 train_path_list = sorted(glob.glob(train_data_path))
@@ -106,18 +105,4 @@ val_set = CustomDataset(
 # 분산 학습 RUN
 if __name__ == "__main__":
     world_size = torch.cuda.device_count()
-
-    mp.spawn(
-        main_worker,
-        nprocs=world_size,
-        args=(
-            world_size,
-            train_set,
-            val_set,
-            CFG,
-            pth_path,
-            log_dir,
-        ),
-        join=True,
-    )
-
+    main_worker(world_size,train_set,val_set,CFG,pth_path,log_dir)
