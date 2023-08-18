@@ -12,3 +12,5 @@ ResUnet/log_dir/
 Unet_smp/log_dir/
 Unet_smp/pthfile/
 a.ipynb
+FixMatch_DeepLab/log_dir
+FixMatch_DeepLab/pthfile
