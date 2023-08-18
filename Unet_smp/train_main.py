@@ -54,7 +54,7 @@ device = "cuda" if torch.cuda.is_available() else "cpu"
 
 pth_path = f"C:/Users/kim/Desktop/bsm/pathology_image_project/Unet_smp/pthfile/{day}/"
 os.makedirs(pth_path, exist_ok=True)
-pth_name = os.path.join(pth_path, run_name)
+pth_path = os.path.join(pth_path, run_name)
 
 
 train_data_path = f"C:/Users/kim/Desktop/bsm/pathology_image_project/git_ignore/PDA_labeled_tile/train/{CFG['train_magnification']}/**/*.png"
