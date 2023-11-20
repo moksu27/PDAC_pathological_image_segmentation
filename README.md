@@ -1,6 +1,6 @@
-# PDAC_Pathological_Image_Segmentation in Kyungpook National University
+# PDAC_Pathological_Image_Segmentation
 
-## This project aims to segment and visualize the Pancreatic Ductal Adenocarcinoma (PDAC) region in pathological images using various segmentation deep learning models.
+## This code aims to segment and visualize the Pancreatic Ductal Adenocarcinoma (PDAC) region in pathological images using various segmentation deep learning models.
 
 ## Introduction
 The available deep learning models for this project are as follows:
