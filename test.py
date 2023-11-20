@@ -36,7 +36,7 @@ figure_path = f"{args.save_path}/figure"
 os.makedirs(figure_path, exist_ok=True)
 
 
-# Seed 고정
+# Fix Seed
 def seed_everything(seed):
     random.seed(seed)
     os.environ["PYTHONHASHSEED"] = str(seed)
