@@ -1,6 +1,5 @@
 import glob
 import torch
-import torch.nn as nn
 import numpy as np
 from tqdm.auto import tqdm
 from torch.utils.data.dataloader import DataLoader
@@ -151,21 +150,21 @@ def Test(model, criterion, test_loader, device):
             score_meter.update(score.item())
 
             for i in range(len(img)):
-                # 오리지널 이미지
+                # original image
                 plt.subplot(1, 3, 1)
                 plt.title("original")
                 plt.imshow(ToPILImage()(denormalize(img[i].cpu())))
                 plt.xticks([])
                 plt.yticks([])
 
-                # 마스크 이미지
+                # label image
                 plt.subplot(1, 3, 2)
                 plt.title("label")
                 plt.imshow(label[i].cpu())
                 plt.xticks([])
                 plt.yticks([])
 
-                # 마스크 예측 이미지
+                # prediected image
                 plt.subplot(1, 3, 3)
                 plt.title("predicted")
                 plt.tight_layout()
