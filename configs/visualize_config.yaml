@@ -1,0 +1,21 @@
+# arguments for dataset
+# svs
+svs_path: "/workspace/pathology_project_github/git_ignore/data/test_svs/C3L-00017-22.svs"
+
+# tile
+tile_path: "/workspace/pathology_project_github/git_ignore/data/PDA_test_tile/C3L-00017-22/C3L-00017-22_tiles"
+
+# tsv
+tsv_path: "/workspace/pathology_project_github/git_ignore/data/PDA_test_tile/C3L-00017-22/tile_selection.tsv"
+
+# model parameter
+batch_size: 1
+img_size: 512
+seed: 41
+num_worker: 8
+port: tcp://0.0.0.0:12345
+
+# arguments for model
+model: fpn # ["unet", "fpn", "deeplabv3+", "pspnet"]
+backbone: resnet18
+dilations: (3, 6, 9) # if the model is deeplabv3+

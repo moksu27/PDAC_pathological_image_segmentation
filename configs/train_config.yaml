@@ -1,0 +1,24 @@
+# arguments for dataset
+# train
+train_path: Your/Data/Path
+
+# validation
+val_path: Your/Data/Path
+
+# test
+test_path: Your/Data/Path
+
+# arguments for training
+epochs: 50
+batch_size: 128
+lr: 0.0001
+img_size: 512
+seed: 41
+num_worker: 8
+port: tcp://0.0.0.0:12345
+earlystop_patience: 30
+
+# arguments for model
+model: fpn # ["unet", "fpn", "deeplabv3+", "pspnet"]
+backbone: resnet18
+dilations: (3, 6, 9) # if the model is deeplabv3+
