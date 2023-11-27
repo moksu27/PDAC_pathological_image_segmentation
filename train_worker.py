@@ -169,7 +169,7 @@ def main_worker(gpu, world_size, train_set, val_set, cfg, pth_path, log_dir):
             activation=None,
             decoder_atrous_rates=cfg["dilations"],
         )
-    elif cfg["model"] == "pspnet+":
+    elif cfg["model"] == "pspnet":
         model = smp.PSPNet(
             encoder_name=cfg[
                 "backbone"
