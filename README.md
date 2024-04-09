@@ -31,6 +31,9 @@ The required data files are
 2. TSV file containing tile image coordinates
 3. original image SVS file
 
+## Data
+you can use image and mask data in this URL: https://docs.google.com/uc?export=download&id=1FwwYqDmIvuT6XzUTpBJha4z90-UfywHm
+
 ## Usage
 ### Model Training
 Execution Code: train.py --config "Your Config Path" --save_path "Your Save Path"
@@ -80,6 +83,9 @@ Visualizatino input data의 경우 각 패치 데이터의 좌표 값이 필요�
 1. Tile images
 2. TSV file (tile image 좌표 값)
 3. 원본 이미지 svs file
+
+## Data
+URL을 통해 이미지와 마스크 데이터를 이용할 수 있습니다: https://docs.google.com/uc?export=download&id=1FwwYqDmIvuT6XzUTpBJha4z90-UfywHm
 
 ## Usage
 ### Model Training
