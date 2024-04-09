@@ -1,12 +1,12 @@
 # arguments for dataset
 # svs
-svs_path: "/workspace/pathology_project_github/git_ignore/data/test_svs/C3L-00017-22.svs"
+svs_path: "pathology_data\visualize\test_svs\C3L-00017-22.svs"
 
 # tile
-tile_path: "/workspace/pathology_project_github/git_ignore/data/PDA_test_tile/C3L-00017-22/C3L-00017-22_tiles"
+tile_path: "pathology_data\visualize\test_tile_for_visualize\C3L-00017-22\C3L-00017-22_tiles"
 
 # tsv
-tsv_path: "/workspace/pathology_project_github/git_ignore/data/PDA_test_tile/C3L-00017-22/tile_selection.tsv"
+tsv_path: "pathology_data\visualize\test_tile_for_visualize\C3L-00017-22\tile_selection.tsv"
 
 # model parameter
 batch_size: 1

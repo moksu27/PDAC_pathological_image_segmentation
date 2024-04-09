@@ -1,12 +1,12 @@
 # arguments for dataset
-# train
-train_path: Your/Data/Path
+# train (train.py)
+train_path: "pathology_data\data\train"
 
-# validation
-val_path: Your/Data/Path
+# validation (train.py)
+val_path: "pathology_data\data\validation"
 
-# test
-test_path: Your/Data/Path
+# test (test.py)
+test_path: "pathology_data\data\test"
 
 # arguments for training
 epochs: 50
@@ -19,6 +19,6 @@ port: tcp://0.0.0.0:12345
 earlystop_patience: 30
 
 # arguments for model
-model: fpn # ["unet", "fpn", "deeplabv3+", "pspnet"]
+model: fpn # select ["unet", "fpn", "deeplabv3+", "pspnet"]
 backbone: resnet18
 dilations: (3, 6, 9) # if the model is deeplabv3+
