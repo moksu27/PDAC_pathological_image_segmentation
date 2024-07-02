@@ -2,6 +2,9 @@
 
 ## This code aims to segment and visualize the Pancreatic Ductal Adenocarcinoma (PDAC) region in pathological images using various segmentation deep learning models.
 
+## Paper
+doi: 10.3389/fonc.2024.1346237
+
 ## Introduction
 The available deep learning models for this project are as follows:
 1. Unet
@@ -53,6 +56,9 @@ You can refer to visualize/predict_overlay.ipynb file to visualize the segmentat
 
 
 ## 이 프로젝트는 여러가지 segmentation 딥러닝 모델을 이용하여 병리 영상 중 Pancreatic Ductal Adenocarcinoma(PDAC)의 부분을 세그먼테이션 하고 시각화하는 것을 목표로 합니다.
+
+## Paper
+doi: 10.3389/fonc.2024.1346237
 
 ## Introduction
 사용할 수 있는 딥러닝 모델을 다음과 같습니다.
