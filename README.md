@@ -3,7 +3,7 @@
 ## This code aims to segment and visualize the Pancreatic Ductal Adenocarcinoma (PDAC) region in pathological images using various segmentation deep learning models.
 
 ## Paper
-doi: 10.3389/fonc.2024.1346237
+doi: 10.3389/fonc.2024.1346237 (https://www.frontiersin.org/journals/oncology/articles/10.3389/fonc.2024.1346237/full)
 
 ## Introduction
 The available deep learning models for this project are as follows:
