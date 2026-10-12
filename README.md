@@ -14,6 +14,8 @@ The available deep learning models for this project are as follows:
 
 The encoders of these models utilize the ImageNet pretrained ResNet18 model to extract features. Our model uses the Distributed Data Parallel (DDP) approach for training.
 
+pth: https://docs.google.com/uc?export=download&id=1fEynZ3jQHvBcqePb9BCY0wqBqCA87hTv
+
 ## Getting Started
 ### Model Train & Test
 It is recommended to specify the data path and adjust the model parameters in the config.yaml file before use.
@@ -71,6 +73,8 @@ doi: 10.3389/fonc.2024.1346237 (https://www.frontiersin.org/journals/oncology/ar
 모델들의 인코더는 기본적으로 ImageNet pretrained resnet18 model을 이용하여 feature를 추출합니다.
 
 우리의 모델은 기본적으로 Distributed Data Parallel(DDP) 방식으로 모델 학습을 진행합니다.
+
+pth: https://docs.google.com/uc?export=download&id=1fEynZ3jQHvBcqePb9BCY0wqBqCA87hTv
 
 ## Getting Started
 ### Model Train & Test
